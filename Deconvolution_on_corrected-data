@@ -1,0 +1,165 @@
+## Deonconvolution on corrected data
+library(minfi)
+library(sva)
+library(RColorBrewer)
+library(gridExtra)
+library(dplyr)
+library("lumi", lib.loc="/usr/local/lib/R/site-library")
+library("methylumi")
+library(ggridges)
+
+
+## ONLY NEEDED TO RUN THIS ONCE TO GET THE CORD PROFILES###
+#source("~/Meaghan-Deploy/deconvolution-utils.R")
+#source("~/Meaghan-Deploy/diagnostics.R")
+
+
+#load("sorted_betas_BMIQ_combat_together.rdata")
+#load("~/Code for ref free methods/sorted_pdat_BMIQ_combat_together.rdata")
+
+
+#pd.sort<- msorted_pd.combat
+#pd.test<- read.csv("24_wholebloods_samplesheet.csv", header=T, row.names=1)
+
+#CELL_TYPES = c("Gran", "Mono", "Bcell", "CD4T", "CD8T", "nRBC", "NK")
+
+#pd.sort$CellType <- to_canonical_cell_types(v = pd.sort$CellType,
+#                                            cell_types = c("WB", "CBMC", "CD4T", "CD8T", "G", "Mo", "B", "NK", "RBC"),
+#                                            canon_cell_types = c("WB", "CBMC", "CD4T", "CD8T", "Gran", "Mono", "Bcell", "NK", "nRBC"))
+
+#dm_probes_by_ct <- select_probes_t_separation_by_ct(betas=msorted_betas.combat,
+#                                                    cell_type_ind=pd.sort$CellType,
+#                                                    cell_types=CELL_TYPES, N=100)
+
+#probes <- unlist(dm_probes_by_ct)
+#cord_profile <- construct_profiles(betas=msorted_betas.combat,
+#                                   probes=probes,
+#                                   cell_types=CELL_TYPES, 
+#                                   cell_type_ind=pd.sort$CellType)
+
+#save(cord_profile, file="cord_profile.rdata")
+
+
+load("~/Code for ref free methods/cord_profile.rdata")
+load("~/Code for ref free methods/decon_pcs_corrected_betas.Rdata")
+decon_pcs<- adj.residuals
+load("~/Code for ref free methods/decon_corrected_betas.Rdata")
+decon<- adj.residuals
+load("~/Code for ref free methods/facs_pcs_corrected_betas.Rdata")
+facs_pcs<- adj.residuals
+load("~/Code for ref free methods/facs_corrected_betas.Rdata")
+facs<- adj.residuals
+load("~/big_data/reffree/adj.residuals_reffreecellmix.Rdata")
+load("~/big_data/reffree/adj.residuals_refactor.Rdata")
+load("~/big_data/reffree/adj.residuals_sva.sup.ga.Rdata")
+load("~/big_data/reffree/adj.residuals_ruv.sex.Rdata")
+load("~/big_data/reffree/adj.residuals_ruv.ga.Rdata")
+load("~/big_data/reffree/adj.residuals_sva.unsup.ga.Rdata")
+load("~/big_data/reffree/adj.residuals_sva.sup.sex.Rdata")
+load("~/big_data/reffree/adj.residuals_sva.sup.sex.Rdata")
+load("~/big_data/reffree/adj.residuals_sva.unsup.sex.Rdata")
+
+for(a in c("facs", 
+           "facs_pcs",
+           "decon", 
+           "decon_pcs", 
+           "adj.residuals.refactor", 
+           "adj.residuals.reffreecellmix",
+           "adj.residuals.ruv.ga", 
+           "adj.residuals.ruv.sex",
+           "adj.residuals.sva.sup.ga",
+          "adj.residuals.sva.sup.sex",
+          "adj.residuals.sva.unsup.ga",
+          "adj.residuals.sva.unsup.sex"
+           )){
+testbetas<- get(a)
+est_cell_counts <- minfi:::projectCellType(testbetas[rownames(cord_profile),],
+                                           cord_profile,
+                                           nonnegative = T,
+                                           lessThanOne = T)
+save(est_cell_counts, file=paste(a, "_predicted_cell_types.Rdata", sep=""))
+}
+
+
+
+### test the resulting cell counts
+load("~/Code for ref free methods/adj.residuals.sva.unsup.sex_predicted_cell_types.Rdata")
+sva.unsup.sex<- est_cell_counts
+load("~/Code for ref free methods/adj.residuals.sva.unsup.ga_predicted_cell_types.Rdata")
+sva.unsup.ga<- est_cell_counts
+load("~/Code for ref free methods/adj.residuals.sva.sup.sex_predicted_cell_types.Rdata")
+sva.sup.sex<- est_cell_counts
+load("~/Code for ref free methods/adj.residuals.sva.sup.ga_predicted_cell_types.Rdata")
+sva.sup.ga<- est_cell_counts
+load("~/Code for ref free methods/adj.residuals.ruv.sex_predicted_cell_types.Rdata")
+ruv.sex<- est_cell_counts
+load("~/Code for ref free methods/adj.residuals.ruv.ga_predicted_cell_types.Rdata")
+ruv.ga<- est_cell_counts
+load("~/Code for ref free methods/adj.residuals.reffreecellmix_predicted_cell_types.Rdata")
+cellmix<- est_cell_counts
+load("~/Code for ref free methods/adj.residuals.refactor_predicted_cell_types.Rdata")
+refactor<- est_cell_counts
+load("~/Code for ref free methods/facs_predicted_cell_types.Rdata")
+facs.counts<- est_cell_counts
+load("~/Code for ref free methods/facs_pcs_predicted_cell_types.Rdata")
+facs.pcs.counts<- est_cell_counts
+load("~/Code for ref free methods/decon_predicted_cell_types.Rdata")
+decon.counts<- est_cell_counts
+load("~/Code for ref free methods/decon_pcs_predicted_cell_types.Rdata")
+decon.pcs.counts<- est_cell_counts
+
+mads<- data.frame(FACS_counts=apply(facs.counts, 2, mad),
+                  FACS_pcs=apply(facs.pcs.counts, 2, mad),
+                  Decon_counts=apply(decon.counts, 2, mad),
+                  Decon_pcs=apply(decon.pcs.counts, 2, mad), 
+                  sva.unsup.sex= apply(sva.unsup.sex, 2, mad), 
+                  sva.unsup.ga= apply(sva.unsup.ga, 2, mad), 
+                  sva.sup.sex= apply(sva.sup.sex, 2, mad), 
+                  sva.sup.ga= apply(sva.sup.ga, 2, mad), 
+                  ruv.sex= apply(ruv.sex, 2, mad),
+                  ruv.ga= apply(ruv.ga, 2, mad), 
+                  cellmix= apply(cellmix, 2, mad), 
+                  refactor=apply(refactor, 2, mad)
+                  )
+
+mads$celltypes<- rownames(mads)
+mads.melt<- melt(mads, id="celltypes")
+ggplot(mads.melt, aes(celltypes, variable, fill=value))+
+  geom_tile()+
+  geom_text(aes(label = round(value, 3)), size=3) +
+  theme_bw()+
+  scale_fill_gradient(low = "white",  high = "cornflowerblue")
+ 
+load("~/Code for ref free methods/Louie_predicted_WB_celltypes_Oct27_use_Louies_sorted.rdata")
+uncorrected<- est_cell_counts
+plot.counts<- melt(rbind(cbind(as.data.frame(uncorrected), Method="uncorrected"),
+  cbind(as.data.frame(facs.counts), Method="FACS_counts"), 
+             cbind(as.data.frame(facs.pcs.counts), Method="FACS_PCs"), 
+             cbind(as.data.frame(decon.counts), Method="Decon_counts"), 
+             cbind(as.data.frame(decon.pcs.counts), Method="Decon_PCs"), 
+             cbind(as.data.frame(sva.unsup.sex), Method="sva.unsup.sex"), 
+             cbind(as.data.frame(sva.unsup.ga), Method="sva.unsup.ga"), 
+             cbind(as.data.frame(sva.sup.ga), Method="sva.sup.ga"), 
+             cbind(as.data.frame(ruv.sex), Method="ruv.sex"), 
+             cbind(as.data.frame(ruv.ga), Method="ruv.ga"), 
+             cbind(as.data.frame(cellmix), Method="cellmix"), 
+             cbind(as.data.frame(refactor), Method="refactor")
+             ), id="Method")
+
+
+#ggplot(plot.counts, aes(Method, value))+
+#  geom_density_ridges()+
+#  facet_wrap(~variable)+
+#  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+
+#ggplot(plot.counts, aes(Method, value))+
+#  geom_violin()+
+#  facet_wrap(~variable)+
+#  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+
+ggplot(plot.counts, aes(Method, value))+
+  geom_point(position = position_jitter(width = 0.1))+
+  facet_wrap(~variable)+
+  theme_bw()+
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+ 
