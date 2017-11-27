@@ -1,0 +1,328 @@
+### First, filter data and rescale any values above 1 or below 0
+
+load("~/Code for ref free methods/decon_pcs_corrected_betas.Rdata")
+decon_pcs<- adj.residuals
+load("~/Code for ref free methods/decon_corrected_betas.Rdata")
+decon<- adj.residuals
+load("~/Code for ref free methods/facs_pcs_corrected_betas.Rdata")
+facs_pcs<- adj.residuals
+load("~/Code for ref free methods/facs_corrected_betas.Rdata")
+facs<- adj.residuals
+load("~/big_data/reffree/adj.residuals_reffreecellmix.Rdata")
+load("~/big_data/reffree/adj.residuals_refactor.Rdata")
+load("~/big_data/reffree/invariable_cordblood_CpGs.Rdata")
+load("~/big_data/reffree/adj.residuals_sva.sup.ga.Rdata")
+load("~/big_data/reffree/adj.residuals_ruv.sex.Rdata")
+load("~/big_data/reffree/adj.residuals_ruv.ga.Rdata")
+load("~/big_data/reffree/adj.residuals_sva.unsup.ga.Rdata")
+load("~/big_data/reffree/adj.residuals_sva.sup.sex.Rdata")
+load("~/big_data/reffree/adj.residuals_sva.sup.sex.Rdata")
+load("~/big_data/reffree/adj.residuals_sva.unsup.sex.Rdata")
+load("~/big_data/reffree/invariable_cordblood_CpGs.Rdata")
+
+for(a in c("facs", 
+           "facs_pcs",
+           "decon", 
+           "decon_pcs", 
+           "adj.residuals.refactor", 
+           "adj.residuals.reffreecellmix",
+           "adj.residuals.ruv.ga", 
+           "adj.residuals.ruv.sex",
+           "adj.residuals.sva.sup.ga",
+           "adj.residuals.sva.sup.sex",
+           "adj.residuals.sva.unsup.ga",
+           "adj.residuals.sva.unsup.sex"
+)){
+  testbetas<- get(a)
+  newbetas<- testbetas[-which(rownames(testbetas)%in% invar_in_beta_and_independent),]
+  newbetas[newbetas>1]<- max(newbetas[newbetas<1])
+  newbetas[newbetas<0]<- min(newbetas[newbetas>0])
+  save(newbetas, file=paste(a, "corrected_betas_filtered.Rdata", sep=""))
+}
+### move them all to big_data, or change save command###
+
+
+load("~/Code for ref free methods/WB_betas_BMIQ_combat_together.rdata")
+uncorrected<- validation_betas.combat[-which(rownames(validation_betas.combat)%in% invar_in_beta_and_independent),]
+load("~/Code for ref free methods/decon_pcscorrected_betas_filtered.Rdata")
+decon_pcs<- newbetas
+load("~/Code for ref free methods/deconcorrected_betas_filtered.Rdata")
+decon<- newbetas
+load("~/Code for ref free methods/facs_pcscorrected_betas_filtered.Rdata")
+facs_pcs<- newbetas
+load("~/Code for ref free methods/facscorrected_betas_filtered.Rdata")
+facs<- newbetas
+load("~/Code for ref free methods/adj.residuals.reffreecellmixcorrected_betas_filtered.Rdata")
+refactor<- newbetas
+load("~/Code for ref free methods/adj.residuals.refactorcorrected_betas_filtered.Rdata")
+reffreecellmix <- newbetas
+load("~/Code for ref free methods/adj.residuals.ruv.gacorrected_betas_filtered.Rdata")
+ruv.ga <- newbetas
+load("~/Code for ref free methods/adj.residuals.ruv.sexcorrected_betas_filtered.Rdata")
+ruv.sex <- newbetas
+load("~/Code for ref free methods/adj.residuals.sva.sup.gacorrected_betas_filtered.Rdata")
+sva.sup.ga <- newbetas
+load("~/Code for ref free methods/adj.residuals.sva.sup.sexcorrected_betas_filtered.Rdata")
+sva.sup.sex <- newbetas
+load("~/Code for ref free methods/adj.residuals.sva.unsup.gacorrected_betas_filtered.Rdata")
+sva.unsup.ga <- newbetas
+load("~/Code for ref free methods/adj.residuals.sva.unsup.sexcorrected_betas_filtered.Rdata")
+sva.unsup.sex <- newbetas
+
+
+library(limma)
+pd<- read.csv("24_wholebloods_samplesheet.csv", row.names = 1)
+mod.sex<- model.matrix(~Sex, data=pd)
+
+for(a in c("facs", 
+           "facs_pcs",
+           "decon", 
+           "decon_pcs", 
+           "refactor", 
+           "reffreecellmix",
+           "ruv.sex", 
+           "sva.sup.sex", 
+           "sva.unsup.sex",
+           "uncorrected"
+         )){
+  bet<- get(a)
+  mvals<- beta2m(bet)
+  fit <- lmFit(mvals[,rownames(mod.sex)], mod.sex, na.action=na.omit)
+  fit <- eBayes(fit)
+  top <- topTable(fit, coef=c("SexM"), adjust="BH", number=Inf) # all significant hits
+  db<-  rowMeans(bet[,pd$Sex=="M"], na.rm=TRUE ) - rowMeans(bet[,pd$Sex=="F"], na.rm=TRUE )
+  top$db<- db[rownames(top)]
+  top.filt.sex<- top[,c("P.Value", "adj.P.Val", "db")]
+  save(top.filt.sex, file=paste(a, "_sex_toptable.Rdata", sep=""))
+}
+
+
+
+
+## checking sex toptables
+load("~/Code for ref free methods/facs_pcs_sex_toptable.Rdata")
+facs.pcs.top.sex<- top.filt.sex
+load("~/Code for ref free methods/facs_sex_toptable.Rdata")
+facs.top.sex<- top.filt.sex
+load("~/Code for ref free methods/decon_pcs_sex_toptable.Rdata")
+decon.pcs.top.sex<- top.filt.sex
+load("~/Code for ref free methods/decon_sex_toptable.Rdata")
+decon.top.sex<- top.filt.sex
+load("~/Code for ref free methods/refactor_sex_toptable.Rdata")
+refactor.top.sex<- top.filt.sex
+load("~/Code for ref free methods/reffreecellmix_sex_toptable.Rdata")
+reffreecellmix.top.sex<- top.filt.sex
+load("~/Code for ref free methods/ruv.sex_sex_toptable.Rdata")
+ruv.top.sex<- top.filt.sex
+load("~/Code for ref free methods/sva.sup.sex_sex_toptable.Rdata")
+sva.sup.top.sex<- top.filt.sex
+load("~/Code for ref free methods/sva.unsup.sex_sex_toptable.Rdata")
+sva.unsup.top.sex<- top.filt.sex
+load("~/Code for ref free methods/uncorrected_sex_toptable.Rdata")
+uncorrected.top.sex<- top.filt.sex
+
+
+####
+true_hits_sex<- intersect(rownames(facs.pcs.top.sex)[facs.pcs.top.sex$adj.P.Val< 0.25], 
+                                             rownames(facs.pcs.top.sex)[abs(facs.pcs.top.sex$db)>0.02])
+toptables_list<- c("facs.pcs.top.sex",
+                   "facs.top.sex", 
+                   "decon.top.sex", 
+                   "decon.pcs.top.sex", 
+                   "refactor.top.sex", 
+                   "reffreecellmix.top.sex", 
+                   "ruv.top.sex", 
+                   "sva.sup.top.sex", 
+                   "sva.unsup.top.sex",
+                   "uncorrected.top.sex"
+                   )
+
+### generate hits tables
+hits.table.sex<- data.frame(matrix(NA, 10, 6,
+                                   dimnames=list(toptables_list,c("N_hits", 
+                                                                  "True_Positives", 
+                                                                  "False_Positives", 
+                                                                  "False_Negatives",
+                                                                  "Spearman", 
+                                                                  "Kendall"))),
+                            stringsAsFactors=F)
+
+
+for(a in c("facs.pcs.top.sex",
+           "facs.top.sex", 
+           "decon.top.sex", 
+           "decon.pcs.top.sex", 
+           "refactor.top.sex", 
+           "reffreecellmix.top.sex", 
+           "ruv.top.sex", 
+           "sva.sup.top.sex", 
+           "sva.unsup.top.sex",
+           "uncorrected.top.sex"
+)){
+  top<- get(a)
+  hits.table.sex[a, 1]<- length(intersect(rownames(top)[top$adj.P.Val< 0.25], 
+            rownames(top)[abs(top$db)>0.02]))
+  hits.table.sex[a, 2]<- length(intersect( intersect(rownames(top)[top$adj.P.Val< 0.25], 
+                                   rownames(top)[abs(top$db)>0.02]),true_hits_sex))
+  hits.table.sex[a,3]<- hits.table.sex[a,1]-hits.table.sex[a,2]
+  hits.table.sex[a,4]<- hits.table.sex[1,1]-hits.table.sex[a,2]
+  hits.table.sex[a,5]<- cor(facs.pcs.top.sex$P.Value, top[rownames(facs.pcs.top.sex),"P.Value"], method="spearman", use="pairwise")
+  hits.table.sex[a,6]<- cor(facs.pcs.top.sex[1:1000,"P.Value"], top[rownames(facs.pcs.top.sex[1:1000,]),"P.Value"], method="kendall", use="pairwise")
+}
+hits.table.sex$Sensitivity<- hits.table.sex$True_Positives/(hits.table.sex$True_Positives+hits.table.sex$False_Negatives)*100
+hits.table.sex$Specificity<- (nrow(facs.pcs.top.sex)-hits.table.sex$False_Positives-hits.table.sex$False_Negatives-hits.table.sex$True_Positives)/
+  ((nrow(facs.pcs.top.sex)-hits.table.sex$False_Positives-hits.table.sex$False_Negatives-hits.table.sex$True_Positives)+hits.table.sex$False_Positives)*100
+
+
+
+write.csv(hits.table.sex, file="Sex_EWAS_hit_tables.csv")
+
+
+
+## try it without a delta beta
+true_hits_sex_nodb<-rownames(facs.pcs.top.sex)[facs.pcs.top.sex$adj.P.Val< 0.25]
+hits.table.sex.nodb<- data.frame(matrix(NA, 10, 2,
+                                   dimnames=list(toptables_list,c("N_hits", "Overlap"))),
+                            stringsAsFactors=F)
+
+
+for(a in c("facs.pcs.top.sex",
+           "facs.top.sex", 
+           "decon.top.sex", 
+           "decon.pcs.top.sex", 
+           "refactor.top.sex", 
+           "reffreecellmix.top.sex", 
+           "ruv.top.sex", 
+           "sva.sup.top.sex", 
+           "sva.unsup.top.sex",
+           "uncorrected.top.sex"
+)){
+  top<- get(a)
+  hits.table.sex.nodb[a, 1]<- length(rownames(top)[top$adj.P.Val< 0.25])
+  hits.table.sex.nodb[a, 2]<- length(intersect( rownames(top)[top$adj.P.Val< 0.25], 
+                                                     true_hits_sex_nodb))
+}
+
+
+### correlation with cell type specific probes
+load("~/Code for ref free methods/Cord_blood_celltype_ttest_statistics.Rdata")
+cord_celltype_pvals<- data.frame(Gran=data.frame(probes_tstats$Gran)$p.value, 
+                                 Mono=data.frame(probes_tstats$Mono)$p.value,
+                                 Bcell=data.frame(probes_tstats$Bcell)$p.value,
+                                 CD4T=data.frame(probes_tstats$CD4T)$p.value,
+                                 CD8T=data.frame(probes_tstats$CD8T)$p.value,
+                                 nRBC=data.frame(probes_tstats$nRBC)$p.value,
+                                 NK=data.frame(probes_tstats$NK)$p.value
+)
+
+rownames(cord_celltype_pvals)<- rownames(data.frame(probes_tstats$Gran))
+cord_celltype_pvals<- cord_celltype_pvals[rownames(facs.top.sex),]
+
+celltype_pvals_melt<- melt(cord_celltype_pvals)
+head(celltype_pvals_melt)
+ggplot(celltype_pvals_melt, aes(value))+
+  geom_density()+
+  facet_wrap(~variable)
+
+hits.table.sex.celltypes<- data.frame(matrix(NA, 10, 7,
+                                   dimnames=list(toptables_list,c("Gran", "Mono", "Bcell", "CD4T", "CD8T", "nRBC", "NK"))),
+                            stringsAsFactors=F)
+
+
+for(a in c("facs.pcs.top.sex",
+           "facs.top.sex", 
+           "decon.top.sex", 
+           "decon.pcs.top.sex", 
+           "refactor.top.sex", 
+           "reffreecellmix.top.sex", 
+           "ruv.top.sex", 
+           "sva.sup.top.sex", 
+           "sva.unsup.top.sex",
+           "uncorrected.top.sex"
+)){
+  top<- get(a)
+  hits.table.sex.celltypes[a, "Gran"]<-cor(cord_celltype_pvals$Gran, top[rownames(cord_celltype_pvals),"P.Value"], method="spearman", use="pairwise")
+  hits.table.sex.celltypes[a, "Mono"]<- cor(cord_celltype_pvals$Mono, top[rownames(cord_celltype_pvals),"P.Value"], method="spearman", use="pairwise")
+  hits.table.sex.celltypes[a,"Bcell"]<- cor(cord_celltype_pvals$Bcell, top[rownames(cord_celltype_pvals),"P.Value"], method="spearman", use="pairwise")
+  hits.table.sex.celltypes[a,"CD4T"]<- cor(cord_celltype_pvals$CD4T, top[rownames(cord_celltype_pvals),"P.Value"], method="spearman", use="pairwise")
+  hits.table.sex.celltypes[a,"CD8T"]<- cor(cord_celltype_pvals$CD8T, top[rownames(cord_celltype_pvals),"P.Value"], method="spearman", use="pairwise")
+  hits.table.sex.celltypes[a,"nRBC"]<- cor(cord_celltype_pvals$nRBC, top[rownames(cord_celltype_pvals),"P.Value"], method="spearman", use="pairwise")
+  hits.table.sex.celltypes[a,"NK"]<- cor(cord_celltype_pvals$NK, top[rownames(cord_celltype_pvals),"P.Value"], method="spearman", use="pairwise")
+  
+  }
+
+
+celltype.enrich.melt<- melt(cbind(hits.table.sex.celltypes, Method=rownames(hits.table.sex.celltypes), id="Method"))
+
+ggplot(celltype.enrich.melt, aes(Method, variable, fill=value))+
+  geom_tile()+
+  geom_text(aes(label = round(value, 3)), size=3) +
+  theme_bw()+
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))+
+  scale_fill_gradient(low = "white",  high = "cornflowerblue")
+
+
+## get pvals
+hits.table.sex.celltypes.pval<- data.frame(matrix(NA, 10, 7,
+                                             dimnames=list(toptables_list,c("Gran", "Mono", "Bcell", "CD4T", "CD8T", "nRBC", "NK"))),
+                                      stringsAsFactors=F)
+
+
+for(a in c("facs.pcs.top.sex",
+           "facs.top.sex", 
+           "decon.top.sex", 
+           "decon.pcs.top.sex", 
+           "refactor.top.sex", 
+           "reffreecellmix.top.sex", 
+           "ruv.top.sex", 
+           "sva.sup.top.sex", 
+           "sva.unsup.top.sex",
+           "uncorrected.top.sex"
+)){
+  top<- get(a)
+  hits.table.sex.celltypes.pval[a,"Gran"]<-cor.test(cord_celltype_pvals$Gran, top[rownames(cord_celltype_pvals),"P.Value"], method="spearman", use="pairwise")$p.value
+  hits.table.sex.celltypes.pval[a,"Mono"]<- cor.test(cord_celltype_pvals$Mono, top[rownames(cord_celltype_pvals),"P.Value"], method="spearman", use="pairwise")$p.value
+  hits.table.sex.celltypes.pval[a,"Bcell"]<- cor.test(cord_celltype_pvals$Bcell, top[rownames(cord_celltype_pvals),"P.Value"], method="spearman", use="pairwise")$p.value
+  hits.table.sex.celltypes.pval[a,"CD4T"]<- cor.test(cord_celltype_pvals$CD4T, top[rownames(cord_celltype_pvals),"P.Value"], method="spearman", use="pairwise")$p.value
+  hits.table.sex.celltypes.pval[a,"CD8T"]<- cor.test(cord_celltype_pvals$CD8T, top[rownames(cord_celltype_pvals),"P.Value"], method="spearman", use="pairwise")$p.value
+  hits.table.sex.celltypes.pval[a,"nRBC"]<- cor.test(cord_celltype_pvals$nRBC, top[rownames(cord_celltype_pvals),"P.Value"], method="spearman", use="pairwise")$p.value
+  hits.table.sex.celltypes.pval[a,"NK"]<- cor.test(cord_celltype_pvals$NK, top[rownames(cord_celltype_pvals),"P.Value"], method="spearman", use="pairwise")$p.value
+  
+}
+
+hits.table.sex.celltypes.pval<- round(hits.table.sex.celltypes.pval, 3)
+
+### in case we decide to make 26 FDR tables...
+tob.table.uncor<- matrix(nrow=4, ncol=3)
+colnames(tob.table.uncor)<- c("0.2", "0.1", "0.05")
+rownames(tob.table.uncor)<- c("0","0.02", "0.05", "0.1")
+
+for(i in colnames(tob.table.uncor)){ 
+  for (j in rownames(tob.table.uncor)){
+    tob.table.uncor[j,i]<- length(intersect(rownames(uncorrected.top.sex)[uncorrected.top.sex$adj.P.Val< as.numeric(i)], 
+                                      rownames(uncorrected.top.sex)[abs(uncorrected.top.sex$db)>as.numeric(j)]))   
+  } 
+}
+
+tob.table.facs.pcs<- matrix(nrow=4, ncol=3)
+colnames(tob.table.facs.pcs)<- c("0.2", "0.1", "0.05")
+rownames(tob.table.facs.pcs)<- c("0","0.02", "0.05", "0.1")
+
+for(i in colnames(tob.table.facs.pcs)){ 
+  for (j in rownames(tob.table.facs.pcs)){
+    tob.table.facs.pcs[j,i]<- length(intersect(rownames(facs.pcs.top.sex)[facs.pcs.top.sex$adj.P.Val< as.numeric(i)], 
+                                      rownames(facs.pcs.top.sex)[abs(facs.pcs.top.sex$db)>as.numeric(j)]))   
+  } 
+}
+
+
+tob.table.refactor<- matrix(nrow=4, ncol=3)
+colnames(tob.table.refactor)<- c("0.2", "0.1", "0.05")
+rownames(tob.table.refactor)<- c("0","0.02", "0.05", "0.1")
+
+for(i in colnames(tob.table.refactor)){ 
+  for (j in rownames(tob.table.refactor)){
+    tob.table.refactor[j,i]<- length(intersect(rownames(refactor.top.sex)[refactor.top.sex$adj.P.Val< as.numeric(i)], 
+                                           rownames(refactor.top.sex)[abs(refactor.top.sex$db)>as.numeric(j)]))   
+  } 
+}
