@@ -1,0 +1,33 @@
+## correcting data for cell types
+load("~/big_data/reffree/WB_betas_BMIQ_combat_together.rdata")
+load("~/Code for ref free methods/Louie_predicted_WB_celltypes_Nov21.rdata")
+
+facs<- read.csv("Updated_counts_WB_validation.csv", row.names=1)
+facs<-facs/100
+facs<- data.frame(row.names=rownames(facs), Gran=facs$Granulocytes, Mono=facs$Monocytes, Bcell=facs$B.cells, CD4T=facs$CD4..T.cells, CD8T=facs$CD8..T.cells, nRBC=facs$nRBCs, NK=facs$NK.cells)
+facs_pcs<- prcomp(facs, center=T, scale=T)$x
+decon<- est_cell_counts
+decon_pcs<- prcomp(decon, center=T, scale=T)$x
+
+save(facs_pcs, file="FACS_pcs.rdata")
+save(decon_pcs, file="Decon_pcs.rdata")
+
+cor.test(facs_pcs[,"PC1"], decon_pcs[,"PC1"]) #0.2348528 Not that great...
+
+betas<- validation_betas.combat
+
+for(a in c("facs", "facs_pcs", "decon", "decon_pcs")){
+diff<- as.data.frame(get(a))
+avebeta.lm<-apply(betas, 1, function(x){
+  diff[colnames(betas),]->blood
+  lm(as.formula(paste("x", "~",
+                      paste(colnames(diff)[1:5], collapse = "+"),
+                      sep = ""
+  )),data=blood)
+})
+residuals<-t(sapply(avebeta.lm, function(x)residuals(summary(x))))
+colnames(residuals)<-colnames(betas)
+rownames(residuals)<- rownames(betas)
+adj.residuals<-residuals+matrix(apply(betas, 1, mean), nrow=nrow(residuals), ncol=ncol(residuals)) ## figure out how to change the object name each time
+
+save(adj.residuals, file=paste(a, "_corrected_betas.Rdata", sep=""))}
