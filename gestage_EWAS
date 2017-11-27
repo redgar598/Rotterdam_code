@@ -1,0 +1,294 @@
+load("~/big_data/reffree/invariable_cordblood_CpGs.Rdata")
+load("~/Code for ref free methods/WB_betas_BMIQ_combat_together.rdata")
+uncorrected<- validation_betas.combat[-which(rownames(validation_betas.combat)%in% invar_in_beta_and_independent),]
+load("~/Code for ref free methods/decon_pcscorrected_betas_filtered.Rdata")
+decon_pcs<- newbetas
+load("~/Code for ref free methods/deconcorrected_betas_filtered.Rdata")
+decon<- newbetas
+load("~/Code for ref free methods/facs_pcscorrected_betas_filtered.Rdata")
+facs_pcs<- newbetas
+load("~/Code for ref free methods/facscorrected_betas_filtered.Rdata")
+facs<- newbetas
+load("~/Code for ref free methods/adj.residuals.reffreecellmixcorrected_betas_filtered.Rdata")
+refactor<- newbetas
+load("~/Code for ref free methods/adj.residuals.refactorcorrected_betas_filtered.Rdata")
+reffreecellmix <- newbetas
+load("~/Code for ref free methods/adj.residuals.ruv.gacorrected_betas_filtered.Rdata")
+ruv.ga <- newbetas
+load("~/Code for ref free methods/adj.residuals.ruv.gacorrected_betas_filtered.Rdata")
+ruv.ga <- newbetas
+load("~/Code for ref free methods/adj.residuals.sva.sup.gacorrected_betas_filtered.Rdata")
+sva.sup.ga <- newbetas
+load("~/Code for ref free methods/adj.residuals.sva.sup.gacorrected_betas_filtered.Rdata")
+sva.sup.ga <- newbetas
+load("~/Code for ref free methods/adj.residuals.sva.unsup.gacorrected_betas_filtered.Rdata")
+sva.unsup.ga <- newbetas
+load("~/Code for ref free methods/adj.residuals.sva.unsup.gacorrected_betas_filtered.Rdata")
+sva.unsup.ga <- newbetas
+
+pd<- read.csv("24_wholebloods_samplesheet_newGA_Nov2017.csv", row.names = 1)
+
+mod.ga<- model.matrix(~GA, data=pd)
+for(a in c("facs", 
+           "facs_pcs",
+           "decon", 
+           "decon_pcs", 
+           "refactor", 
+           "reffreecellmix", 
+           "ruv.ga", 
+           "sva.sup.ga", 
+           "sva.unsup.ga",
+           "uncorrected"
+)){
+  bet<- get(a)
+  mvals<- beta2m(bet)
+  fit <- lmFit(mvals[,rownames(mod.ga)], mod.ga, na.action=na.omit)
+  fit <- eBayes(fit)
+  top <- topTable(fit, coef=c("GA"), adjust="BH", number=Inf) # all significant hits
+  db<- sapply(1:nrow(bet), function(x) {
+    z<-lm(unlist(bet[x,]) ~ pd$GA)
+    slope=z$coefficients[2]
+    as.numeric(slope*(max(pd$GA)-min(pd$GA))) 
+  })
+  top$db<- db
+  top.filt.ga<- top[,c("P.Value", "adj.P.Val", "db")]
+  save(top.filt.ga, file=paste(a, "_ga_toptable.Rdata", sep=""))
+}
+
+
+
+
+## checking ga toptables
+load("~/Code for ref free methods/facs_pcs_ga_toptable.Rdata")
+facs.pcs.top.ga<- top.filt.ga
+load("~/Code for ref free methods/facs_ga_toptable.Rdata")
+facs.top.ga<- top.filt.ga
+load("~/Code for ref free methods/decon_pcs_ga_toptable.Rdata")
+decon.pcs.top.ga<- top.filt.ga
+load("~/Code for ref free methods/decon_ga_toptable.Rdata")
+decon.top.ga<- top.filt.ga
+load("~/Code for ref free methods/refactor_ga_toptable.Rdata")
+refactor.top.ga<- top.filt.ga
+load("~/Code for ref free methods/reffreecellmix_ga_toptable.Rdata")
+reffreecellmix.top.ga<- top.filt.ga
+load("~/Code for ref free methods/ruv.ga_ga_toptable.Rdata")
+ruv.top.ga<- top.filt.ga
+load("~/Code for ref free methods/sva.sup.ga_ga_toptable.Rdata")
+sva.sup.top.ga<- top.filt.ga
+load("~/Code for ref free methods/sva.unsup.ga_ga_toptable.Rdata")
+sva.unsup.top.ga<- top.filt.ga
+load("~/Code for ref free methods/uncorrected_ga_toptable.Rdata")
+uncorrected.top.ga<- top.filt.ga
+
+
+####
+true_hits_ga<- intersect(rownames(facs.pcs.top.ga)[facs.pcs.top.ga$adj.P.Val< 0.25], 
+                          rownames(facs.pcs.top.ga)[abs(facs.pcs.top.ga$db)>0.02])
+
+table.facs<- matrix(nrow=4, ncol=3)
+colnames(table.facs)<- c("0.2", "0.1", "0.05")
+rownames(table.facs)<- c("0","0.02", "0.05", "0.1")
+
+for(i in colnames(table.facs)){ 
+  for (j in rownames(table.facs)){
+    table.facs[j,i]<- length(intersect(rownames(facs.pcs.top.ga)[facs.pcs.top.ga$adj.P.Val< as.numeric(i)], 
+                                               rownames(facs.pcs.top.ga)[abs(facs.pcs.top.ga$db)>as.numeric(j)]))   
+  } 
+}
+
+toptables_list<- c("facs.pcs.top.ga",
+                   "facs.top.ga", 
+                   "decon.top.ga", 
+                   "decon.pcs.top.ga", 
+                   "refactor.top.ga", 
+                   "reffreecellmix.top.ga", 
+                   "ruv.top.ga", 
+                   "sva.sup.top.ga", 
+                   "sva.unsup.top.ga",
+                   "uncorrected.top.ga"
+)
+
+### generate hits tables
+hits.table.ga<- data.frame(matrix(NA, 10, 6,
+                                   dimnames=list(toptables_list,c("N_hits", 
+                                                                  "True_Positives", 
+                                                                  "False_Positives", 
+                                                                  "False_Negatives",
+                                                                  "Spearman", 
+                                                                  "Kendall"))),
+                            stringsAsFactors=F)
+
+
+for(a in c("facs.pcs.top.ga",
+           "facs.top.ga", 
+           "decon.top.ga", 
+           "decon.pcs.top.ga", 
+           "refactor.top.ga", 
+           "reffreecellmix.top.ga", 
+           "ruv.top.ga", 
+           "sva.sup.top.ga", 
+           "sva.unsup.top.ga",
+           "uncorrected.top.ga"
+)){
+  top<- get(a)
+  hits.table.ga[a, 1]<- length(intersect(rownames(top)[top$adj.P.Val< 0.25], 
+                                          rownames(top)[abs(top$db)>0.02]))
+  hits.table.ga[a, 2]<- length(intersect( intersect(rownames(top)[top$adj.P.Val< 0.25], 
+                                                     rownames(top)[abs(top$db)>0.02]),true_hits_ga))
+  hits.table.ga[a,3]<- hits.table.ga[a,1]-hits.table.ga[a,2]
+  hits.table.ga[a,4]<- hits.table.ga[1,1]-hits.table.ga[a,2]
+  hits.table.ga[a,5]<- cor(facs.pcs.top.ga$P.Value, top[rownames(facs.pcs.top.ga),"P.Value"], method="spearman", use="pairwise")
+  hits.table.ga[a,6]<- cor(facs.pcs.top.ga[1:1000,"P.Value"], top[rownames(facs.pcs.top.ga[1:1000,]),"P.Value"], method="kendall", use="pairwise")
+}
+hits.table.ga$Sensitivity<- hits.table.ga$True_Positives/(hits.table.ga$True_Positives+hits.table.ga$False_Negatives)*100
+hits.table.ga$Specificity<- (nrow(facs.pcs.top.ga)-hits.table.ga$False_Positives-hits.table.ga$False_Negatives-hits.table.ga$True_Positives)/
+  ((nrow(facs.pcs.top.ga)-hits.table.ga$False_Positives-hits.table.ga$False_Negatives-hits.table.ga$True_Positives)+hits.table.ga$False_Positives)*100
+
+
+
+write.csv(hits.table.ga, file="ga_EWAS_hit_tables.csv")
+
+
+
+## try it without a delta beta
+#true_hits_ga_nodb<-rownames(facs.pcs.top.ga)[facs.pcs.top.ga$adj.P.Val< 0.25]
+#hits.table.ga.nodb<- data.frame(matrix(NA, 10, 2,
+#                                        dimnames=list(toptables_list,c("N_hits", "Overlap"))),
+#                                 stringsAsFactors=F)
+
+
+#for(a in c("facs.pcs.top.ga",
+#           "facs.top.ga", 
+#           "decon.top.ga", 
+#           "decon.pcs.top.ga", 
+#           "refactor.top.ga", 
+#           "reffreecellmix.top.ga", 
+#           "ruv.top.ga", 
+#           "sva.sup.top.ga", 
+#           "sva.unsup.top.ga",
+#           "uncorrected.top.ga"
+#)){
+#  top<- get(a)
+#  hits.table.ga.nodb[a, 1]<- length(rownames(top)[top$adj.P.Val< 0.25])
+#  hits.table.ga.nodb[a, 2]<- length(intersect( rownames(top)[top$adj.P.Val< 0.25], 
+#                                                true_hits_ga_nodb))
+#}
+
+
+### correlation with cell type specific probes
+load("~/Code for ref free methods/Cord_blood_celltype_ttest_statistics.Rdata")
+cord_celltype_pvals<- data.frame(Gran=data.frame(probes_tstats$Gran)$p.value, 
+                                 Mono=data.frame(probes_tstats$Mono)$p.value,
+                                 Bcell=data.frame(probes_tstats$Bcell)$p.value,
+                                 CD4T=data.frame(probes_tstats$CD4T)$p.value,
+                                 CD8T=data.frame(probes_tstats$CD8T)$p.value,
+                                 nRBC=data.frame(probes_tstats$nRBC)$p.value,
+                                 NK=data.frame(probes_tstats$NK)$p.value
+)
+
+rownames(cord_celltype_pvals)<- rownames(data.frame(probes_tstats$Gran))
+cord_celltype_pvals<- cord_celltype_pvals[rownames(facs.top.ga),]
+
+
+hits.table.ga.celltypes<- data.frame(matrix(NA, 10, 7,
+                                             dimnames=list(toptables_list,c("Gran", "Mono", "Bcell", "CD4T", "CD8T", "nRBC", "NK"))),
+                                      stringsAsFactors=F)
+
+
+for(a in c("facs.pcs.top.ga",
+           "facs.top.ga", 
+           "decon.top.ga", 
+           "decon.pcs.top.ga", 
+           "refactor.top.ga", 
+           "reffreecellmix.top.ga", 
+           "ruv.top.ga", 
+           "sva.sup.top.ga", 
+           "sva.unsup.top.ga",
+           "uncorrected.top.ga"
+)){
+  top<- get(a)
+  hits.table.ga.celltypes[a, "Gran"]<-cor(cord_celltype_pvals$Gran, top[rownames(cord_celltype_pvals),"P.Value"], method="spearman", use="pairwise")
+  hits.table.ga.celltypes[a, "Mono"]<- cor(cord_celltype_pvals$Mono, top[rownames(cord_celltype_pvals),"P.Value"], method="spearman", use="pairwise")
+  hits.table.ga.celltypes[a,"Bcell"]<- cor(cord_celltype_pvals$Bcell, top[rownames(cord_celltype_pvals),"P.Value"], method="spearman", use="pairwise")
+  hits.table.ga.celltypes[a,"CD4T"]<- cor(cord_celltype_pvals$CD4T, top[rownames(cord_celltype_pvals),"P.Value"], method="spearman", use="pairwise")
+  hits.table.ga.celltypes[a,"CD8T"]<- cor(cord_celltype_pvals$CD8T, top[rownames(cord_celltype_pvals),"P.Value"], method="spearman", use="pairwise")
+  hits.table.ga.celltypes[a,"nRBC"]<- cor(cord_celltype_pvals$nRBC, top[rownames(cord_celltype_pvals),"P.Value"], method="spearman", use="pairwise")
+  hits.table.ga.celltypes[a,"NK"]<- cor(cord_celltype_pvals$NK, top[rownames(cord_celltype_pvals),"P.Value"], method="spearman", use="pairwise")
+  
+}
+
+
+celltype.enrich.melt<- melt(cbind(hits.table.ga.celltypes, Method=rownames(hits.table.ga.celltypes), id="Method"))
+
+ggplot(celltype.enrich.melt, aes(Method, variable, fill=value))+
+  geom_tile()+
+  geom_text(aes(label = round(value, 3)), size=3) +
+  theme_bw()+
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))+
+  scale_fill_gradient(low = "white",  high = "cornflowerblue")
+
+
+## get pvals
+hits.table.ga.celltypes.pval<- data.frame(matrix(NA, 10, 7,
+                                                  dimnames=list(toptables_list,c("Gran", "Mono", "Bcell", "CD4T", "CD8T", "nRBC", "NK"))),
+                                           stringsAsFactors=F)
+
+
+for(a in c("facs.pcs.top.ga",
+           "facs.top.ga", 
+           "decon.top.ga", 
+           "decon.pcs.top.ga", 
+           "refactor.top.ga", 
+           "reffreecellmix.top.ga", 
+           "ruv.top.ga", 
+           "sva.sup.top.ga", 
+           "sva.unsup.top.ga",
+           "uncorrected.top.ga"
+)){
+  top<- get(a)
+  hits.table.ga.celltypes.pval[a,"Gran"]<-cor.test(cord_celltype_pvals$Gran, top[rownames(cord_celltype_pvals),"P.Value"], method="spearman", use="pairwise")$p.value
+  hits.table.ga.celltypes.pval[a,"Mono"]<- cor.test(cord_celltype_pvals$Mono, top[rownames(cord_celltype_pvals),"P.Value"], method="spearman", use="pairwise")$p.value
+  hits.table.ga.celltypes.pval[a,"Bcell"]<- cor.test(cord_celltype_pvals$Bcell, top[rownames(cord_celltype_pvals),"P.Value"], method="spearman", use="pairwise")$p.value
+  hits.table.ga.celltypes.pval[a,"CD4T"]<- cor.test(cord_celltype_pvals$CD4T, top[rownames(cord_celltype_pvals),"P.Value"], method="spearman", use="pairwise")$p.value
+  hits.table.ga.celltypes.pval[a,"CD8T"]<- cor.test(cord_celltype_pvals$CD8T, top[rownames(cord_celltype_pvals),"P.Value"], method="spearman", use="pairwise")$p.value
+  hits.table.ga.celltypes.pval[a,"nRBC"]<- cor.test(cord_celltype_pvals$nRBC, top[rownames(cord_celltype_pvals),"P.Value"], method="spearman", use="pairwise")$p.value
+  hits.table.ga.celltypes.pval[a,"NK"]<- cor.test(cord_celltype_pvals$NK, top[rownames(cord_celltype_pvals),"P.Value"], method="spearman", use="pairwise")$p.value
+  
+}
+
+hits.table.ga.celltypes.pval<- round(hits.table.ga.celltypes.pval, 3)
+
+### in case we decide to make 26 FDR tables...
+tob.table.uncor<- matrix(nrow=4, ncol=3)
+colnames(tob.table.uncor)<- c("0.2", "0.1", "0.05")
+rownames(tob.table.uncor)<- c("0","0.02", "0.05", "0.1")
+
+for(i in colnames(tob.table.uncor)){ 
+  for (j in rownames(tob.table.uncor)){
+    tob.table.uncor[j,i]<- length(intersect(rownames(uncorrected.top.ga)[uncorrected.top.ga$adj.P.Val< as.numeric(i)], 
+                                            rownames(uncorrected.top.ga)[abs(uncorrected.top.ga$db)>as.numeric(j)]))   
+  } 
+}
+
+tob.table.facs.pcs<- matrix(nrow=4, ncol=3)
+colnames(tob.table.facs.pcs)<- c("0.2", "0.1", "0.05")
+rownames(tob.table.facs.pcs)<- c("0","0.02", "0.05", "0.1")
+
+for(i in colnames(tob.table.facs.pcs)){ 
+  for (j in rownames(tob.table.facs.pcs)){
+    tob.table.facs.pcs[j,i]<- length(intersect(rownames(facs.pcs.top.ga)[facs.pcs.top.ga$adj.P.Val< as.numeric(i)], 
+                                               rownames(facs.pcs.top.ga)[abs(facs.pcs.top.ga$db)>as.numeric(j)]))   
+  } 
+}
+
+
+tob.table.refactor<- matrix(nrow=4, ncol=3)
+colnames(tob.table.refactor)<- c("0.2", "0.1", "0.05")
+rownames(tob.table.refactor)<- c("0","0.02", "0.05", "0.1")
+
+for(i in colnames(tob.table.refactor)){ 
+  for (j in rownames(tob.table.refactor)){
+    tob.table.refactor[j,i]<- length(intersect(rownames(refactor.top.ga)[refactor.top.ga$adj.P.Val< as.numeric(i)], 
+                                               rownames(refactor.top.ga)[abs(refactor.top.ga$db)>as.numeric(j)]))   
+  } 
+}
