@@ -1,0 +1,30 @@
+
+
+load("~/Code for ref free methods/decon_pcs_corrected_betas.Rdata")
+decon_pcs<- adj.residuals
+load("~/Code for ref free methods/decon_corrected_betas.Rdata")
+decon<- adj.residuals
+load("~/Code for ref free methods/facs_pcs_corrected_betas.Rdata")
+facs_pcs<- adj.residuals
+load("~/Code for ref free methods/facs_corrected_betas.Rdata")
+facs<- adj.residuals
+load("~/big_data/reffree/adj.residuals_reffreecellmix.Rdata")
+load("~/big_data/reffree/adj.residuals_refactor.Rdata")
+load("~/big_data/reffree/invariable_cordblood_CpGs.Rdata")
+
+for(a in c("facs", 
+           "facs_pcs",
+           "decon", 
+           "decon_pcs", 
+           "adj.residuals.refactor", 
+           "adj.residuals.reffreecellmix"
+           )){
+  testbetas<- get(a)
+  newbetas<- testbetas[-which(rownames(testbetas)%in% invar_in_beta_and_independent),]
+  newbetas[newbetas>1]<- max(newbetas[newbetas<1])
+  newbetas[newbetas<0]<- min(newbetas[newbetas>0])
+  save(newbetas, file=paste(a, "corrected_betas_filtered.Rdata", sep=""))
+}
+
+
+
